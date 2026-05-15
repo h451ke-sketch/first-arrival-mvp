@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "First Arrival",
+    "slug": "first-arrival",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFE3E8"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.firstarrival.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to practice English speaking."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFE3E8"
+      },
+      "package": "com.firstarrival.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow First Arrival to access your microphone for voice practice."
+        }
+      ]
+    ]
+  }
+}
