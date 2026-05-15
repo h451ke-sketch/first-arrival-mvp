@@ -4,7 +4,7 @@ A language learning simulation game for Chinese international students in Austra
 
 ## Tech Stack
 
-- **React Native + Expo SDK 54** — cross-platform mobile app (iOS / Android)
+- **React Native + Expo SDK 54** — cross-platform mobile app (iOS / Android) and **Web** (`expo start --web` / static export to `dist/`)
 - **TypeScript + NativeWind** — typed codebase with Tailwind-style styling
 - **Zustand** — state management (game progress, conversations, settings)
 - **DeepSeek API** — AI-generated NPC dialogue and conversation analysis
@@ -29,18 +29,40 @@ Scan the QR code with Expo Go, or press `a` for Android emulator / `i` for iOS s
 
 ### API Keys
 
-The developer API keys are already configured in `app.json` under `extra`. To run the project as-is, no additional setup is needed.
+Keys are read from environment variables at build time (`EXPO_PUBLIC_*`). They are **not** committed in `app.json`.
 
-To use your own keys, open `app.json` and replace:
-
-```json
-"extra": {
-  "deepgramApiKey": "YOUR_DEEPGRAM_KEY",
-  "deepseekApiKey": "YOUR_DEEPSEEK_KEY"
-}
+```bash
+cp .env.example .env
+# Edit .env and set EXPO_PUBLIC_DEEPGRAM_API_KEY and EXPO_PUBLIC_DEEPSEEK_API_KEY
 ```
 
-Users can also add their own DeepSeek key directly in the app's Settings screen (bypasses the 20-session free limit).
+`EXPO_PUBLIC_*` values are inlined into the JS bundle (same as any client-side secret). Do not use them for server-only credentials; use a backend proxy if you need true secrecy.
+
+Users can also add their own DeepSeek key in the in-app Settings screen (bypasses the free-session limit when set).
+
+### Deploy Web (static hosting)
+
+Build a production web bundle:
+
+```bash
+npm run build:web
+```
+
+Output directory: **`dist/`** (contains `index.html`, hashed JS, and assets). Upload this folder or point your host’s “output directory” to `dist`.
+
+#### Tencent EdgeOne Pages
+
+1. Connect this repo or upload the `dist` folder (see [EdgeOne Pages — build guide](https://pages.edgeone.ai/zh/document/build-guide)).
+2. **Install command:** `npm ci` (or `npm install`).
+3. **Build command:** `npm run build:web`.
+4. **Output directory:** `dist`.
+5. **Environment variables (build time):** add the same names as in `.env.example` (`EXPO_PUBLIC_DEEPGRAM_API_KEY`, `EXPO_PUBLIC_DEEPSEEK_API_KEY`, optional `EXPO_PUBLIC_GEMINI_API_KEY`). Without them, STT/TTS and default DeepSeek calls will fail in production.
+
+**Note:** Deepgram / DeepSeek are called from the **user’s browser**. EdgeOne only serves static files; it does not proxy those APIs. If some users have poor reachability to overseas APIs, add your own backend or CDN rules as needed.
+
+#### Vercel (optional)
+
+Same idea: build command `npm run build:web`, output directory `dist`, set `EXPO_PUBLIC_*` in Project → Settings → Environment Variables for the Production environment.
 
 ## Features
 

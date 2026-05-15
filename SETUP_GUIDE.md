@@ -44,20 +44,21 @@ The project uses two external APIs:
 - Go to **API Keys** → create a new key
 - Key format: `sk-xxxxxxxxxxxxxxxx`
 
-### Configure Keys in app.json
+### Configure keys in `.env`
 
-Open `app.json` and update the `extra` section:
-
-```json
-"extra": {
-  "deepgramApiKey": "YOUR_DEEPGRAM_KEY_HERE",
-  "deepseekApiKey": "YOUR_DEEPSEEK_KEY_HERE"
-}
+```bash
+cp .env.example .env
 ```
 
-Save the file.
+Edit `.env` and set:
 
-> ⚠️ These keys are bundled into the app binary. Do not commit `app.json` with real keys to a public repository.
+- `EXPO_PUBLIC_DEEPGRAM_API_KEY` — your Deepgram key  
+- `EXPO_PUBLIC_DEEPSEEK_API_KEY` — your DeepSeek key  
+- `EXPO_PUBLIC_GEMINI_API_KEY` — optional (Gemini path is rarely used)
+
+Restart Metro after changing `.env` (`Ctrl+C` then `npx expo start`).
+
+> ⚠️ `EXPO_PUBLIC_*` values are inlined into the JS bundle (mobile and web). Do not commit `.env` to git (it is gitignored). For public repos, rotate keys if they were ever exposed.
 
 ---
 
@@ -97,8 +98,15 @@ Choose how to run it:
 | **Expo Go on phone** | Scan QR code with Expo Go app |
 | **Android emulator** | Press `a` in terminal |
 | **iOS simulator** (Mac only) | Press `i` in terminal |
+| **Web (browser)** | `npm run web` — then open the URL shown (e.g. http://localhost:8081) |
 
-First load takes longer as the JS bundle compiles.
+### Production web bundle (EdgeOne Pages / any static host)
+
+```bash
+npm run build:web
+```
+
+Upload the **`dist/`** folder. On [EdgeOne Pages](https://pages.edgeone.ai/zh/document/build-guide), set build command to `npm run build:web`, output directory to `dist`, and add the same `EXPO_PUBLIC_*` variables in the host’s environment settings.
 
 ---
 
@@ -129,7 +137,7 @@ npx expo start --clear
 
 ### Network timeout / API errors
 1. Check internet connection
-2. Confirm API keys are correct in `app.json`
+2. Confirm API keys are correct in `.env` (and in your host’s build env for deployed web)
 3. Check service status:
    - Deepgram: https://status.deepgram.com/
    - DeepSeek: https://status.deepseek.com/
