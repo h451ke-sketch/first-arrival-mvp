@@ -239,12 +239,15 @@ export default function DialogueScreen() {
   return (
     <View className="flex-1 flex-row bg-white">
       {/* Left Side - NPC Avatar / Video (30%) */}
-      <View className="w-[30%] bg-gray-100 items-center justify-center">
+      <View
+        className="w-[30%] bg-gray-100"
+        style={{ overflow: 'hidden' }}
+      >
         {npc.video ? (
           <Video
             source={npc.video}
-            style={{ width: '90%', height: '90%' }}
-            resizeMode={ResizeMode.CONTAIN}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode={ResizeMode.COVER}
             isLooping
             isMuted
             shouldPlay
@@ -252,8 +255,8 @@ export default function DialogueScreen() {
         ) : (
           <Image
             source={npc.avatar}
-            style={{ width: '90%', height: '90%' }}
-            resizeMode="contain"
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
           />
         )}
       </View>

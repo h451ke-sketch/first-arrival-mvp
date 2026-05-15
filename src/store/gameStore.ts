@@ -64,7 +64,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((state) => {
       const current = state.npcAffinity[npcId] || {
         npcId,
-        currentAffinity: 50,
+        currentAffinity: 0,
         conversationCount: 0,
         lastInteraction: new Date(),
         relationshipLevel: 'stranger' as const

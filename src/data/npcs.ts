@@ -27,6 +27,7 @@ export const NPCs: Record<string, NPC> = {
     role: 'Student Center Staff',
     location: 'student-center',
     avatar: require('../../assets/npcs/mia.jpg'),
+    video: require('../../assets/npcs/mia.mp4'),
     voiceModel: 'aura-luna-en', // 温柔专业女声
     personality: {
       traits: ['organized', 'helpful', 'patient'],
@@ -43,6 +44,7 @@ export const NPCs: Record<string, NPC> = {
     role: 'Tutor',
     location: 'college-classroom',
     avatar: require('../../assets/npcs/ethan.jpg'),
+    video: require('../../assets/npcs/ethan.mp4'),
     voiceModel: 'aura-orion-en', // 稳重学者男声
     personality: {
       traits: ['knowledgeable', 'strict but fair', 'helpful'],
@@ -59,6 +61,7 @@ export const NPCs: Record<string, NPC> = {
     role: 'Bank Teller',
     location: 'bank',
     avatar: require('../../assets/npcs/mark.jpg'),
+    video: require('../../assets/npcs/mark.mp4'),
     voiceModel: 'aura-angus-en', // 澳洲口音男声
     personality: {
       traits: ['professional', 'patient', 'formal'],
@@ -74,7 +77,8 @@ export const NPCs: Record<string, NPC> = {
     name: 'Lily',
     role: 'Doctor',
     location: 'medical-center',
-    avatar: require('../../assets/npcs/lily.jpg'), // TODO: add assets/npcs/lily.jpg
+    avatar: require('../../assets/npcs/lily.jpg'),
+    video: require('../../assets/npcs/lily.mp4'),
     voiceModel: 'aura-athena-en', // 专业温暖女声
     personality: {
       traits: ['professional', 'caring', 'thorough'],
@@ -90,7 +94,8 @@ export const NPCs: Record<string, NPC> = {
     name: 'Mindy',
     role: 'Counsellor',
     location: 'counseling-room',
-    avatar: require('../../assets/npcs/mindy.jpg'), // TODO: add assets/npcs/mindy.jpg
+    avatar: require('../../assets/npcs/mindy.jpg'),
+    video: require('../../assets/npcs/mindy.mp4'),
     voiceModel: 'aura-stella-en', // 温柔舒缓女声
     personality: {
       traits: ['warm', 'patient', 'empathetic'],
@@ -106,7 +111,8 @@ export const NPCs: Record<string, NPC> = {
     name: 'Michael',
     role: 'Supermarket Staff',
     location: 'main-supermarket',
-    avatar: require('../../assets/npcs/michael.jpg'), // TODO: add assets/npcs/michael.jpg
+    avatar: require('../../assets/npcs/michael.jpg'),
+    video: require('../../assets/npcs/michael.mp4'),
     voiceModel: 'aura-zeus-en', // 温和低调男声
     personality: {
       traits: ['shy', 'honest', 'helpful'],
@@ -122,7 +128,8 @@ export const NPCs: Record<string, NPC> = {
     name: 'Cecilia',
     role: 'Apartment Receptionist',
     location: 'main-apartment',
-    avatar: require('../../assets/npcs/cecilia.jpg'), // TODO: add assets/npcs/cecilia.jpg
+    avatar: require('../../assets/npcs/cecilia.jpg'),
+    video: require('../../assets/npcs/cecilia.mp4'),
     voiceModel: 'aura-hera-en', // 冷静干练女声
     personality: {
       traits: ['calm', 'efficient', 'composed'],

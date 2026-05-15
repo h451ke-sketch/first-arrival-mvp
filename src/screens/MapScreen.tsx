@@ -48,24 +48,23 @@ export default function MapScreen() {
       <ImageBackground
         source={require('../../assets/MAP.png')}
         className="flex-1"
-        resizeMode="contain"
-        style={{ width: screenWidth, height: screenHeight }}
+        resizeMode="cover"
+        style={{
+          width: screenWidth,
+          height: screenHeight,
+          overflow: 'hidden',
+        }}
       >
         {/* Locations positioned absolutely on the map */}
         {Object.values(MainMapLocations).map((location) => {
           const isUnlocked = unlockedLocations.includes(location.id);
           const position = location.position || { x: 50, y: 150 };
 
-          // 设计基准 400x400 正方形地图；ImageBackground resizeMode=contain 会把图片按短边等比缩放居中
-          // 因此真正的地图显示区域 = min(可用宽, 可用高) 的正方形，靠 stage 居中
-          const NAV_W = 80;
-          const availW = screenWidth - NAV_W;
-          const mapSize = Math.min(availW, screenHeight);
-          const scale = mapSize / 400;
-          const offsetX = (availW - mapSize) / 2;
-          const offsetY = (screenHeight - mapSize) / 2;
-          const scaledX = offsetX + position.x * scale - 50;
-          const scaledY = offsetY + position.y * scale - 50;
+          // 设计基准 400x400；右侧 80px 导航栏。resizeMode=cover 下地图铺满 stage，按线性比例缩放标记
+          const scaleX = (screenWidth - 80) / 400;
+          const scaleY = screenHeight / 400;
+          const scaledX = position.x * scaleX - 50;
+          const scaledY = position.y * scaleY - 50;
 
           return (
             <TouchableOpacity

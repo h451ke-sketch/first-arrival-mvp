@@ -42,15 +42,10 @@ export default function CollegeMapScreen() {
           const isUnlocked = unlockedLocations.includes(location.id);
           const position = location.position || { x: 50, y: 150 };
 
-          // 与 MapScreen 一致：按 contain 后的正方形地图区域算坐标
-          const NAV_W = 80;
-          const availW = screenWidth - NAV_W;
-          const mapSize = Math.min(availW, screenHeight);
-          const scale = mapSize / 400;
-          const offsetX = (availW - mapSize) / 2;
-          const offsetY = (screenHeight - mapSize) / 2;
-          const scaledX = offsetX + position.x * scale - 50;
-          const scaledY = offsetY + position.y * scale - 50;
+          const scaleX = (screenWidth - 80) / 400;
+          const scaleY = screenHeight / 400;
+          const scaledX = position.x * scaleX - 50;
+          const scaledY = position.y * scaleY - 50;
 
           return (
             <TouchableOpacity

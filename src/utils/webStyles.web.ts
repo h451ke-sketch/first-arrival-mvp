@@ -46,6 +46,14 @@ export function injectGlobalWebStyles(): void {
       background: #FFE3E8;
       box-shadow: 0 0 24px rgba(0, 0, 0, 0.4);
     }
+    /* expo-av <Video> 在 web 端会渲染原生 <video>，但 RN style 只作用在外层 View，
+       导致 <video> 用原生分辨率渲染撑破容器。这里强制其填满父级并保持 cover 裁剪。 */
+    video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+      display: block;
+    }
   `;
   inject(STAGE_STYLE_ID, stageCss);
 }

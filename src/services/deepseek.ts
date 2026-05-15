@@ -133,6 +133,11 @@ IMPORTANT INSTRUCTIONS:
 3. Include appropriate Australian slang occasionally (e.g., "mate", "no worries", "reckon")
 4. Be friendly and helpful to international students
 5. Keep responses concise (2-3 sentences max)
+6. Keep the conversation active unless the student clearly ends it
+7. If the student has NOT said a closing phrase (e.g., "bye", "see you", "thank you, that's all", "that is all", "have a nice day"), your response MUST naturally end with ONE short follow-up question
+8. Your question should guide the learner toward completing the current scenario task
+9. If the student clearly ends the conversation, reply politely and DO NOT ask another question
+10. Avoid ending the conversation too early
 
 Respond ONLY with a JSON object in this exact format:
 {
@@ -314,7 +319,36 @@ AFFINITY SCORING:
 -5 to -1: Poor communication or inappropriate behavior
 -10 to -6: Very rude or confusing interaction
 
-TASK COMPLETION: Only mark a task as completed if the student clearly fulfilled ALL the requirements. Be strict but fair.`;
+TASK COMPLETION: Only mark a task as completed if the student clearly fulfilled ALL the requirements. Be strict but fair.
+
+AUSTRALIAN CULTURAL GUIDELINES:
+When giving cultural tips, prioritise accurate and practical Australian local culture for Chinese international students.
+
+Focus on real Australian norms such as:
+- Politeness expectations (please, thanks, soft requests, indirect politeness)
+- Small talk culture (casual friendliness, "How are you going?", weather, weekend plans)
+- Queueing etiquette and personal space
+- Café and restaurant ordering culture
+- Customer service expectations
+- Classroom participation and tutor communication
+- Academic discussion culture and asking questions
+- GP/medical appointment culture in Australia
+- Counselling and mental health support norms
+- Renting, apartment reception, and maintenance communication
+- Workplace and part-time job communication
+- Supermarket and self-checkout culture
+- Independence and self-service expectations
+- Australian humour, friendliness, and casual communication
+- Real Australian slang ONLY when contextually appropriate
+
+IMPORTANT:
+- Cultural tips MUST be accurate, realistic, and Australia-specific
+- Avoid stereotypes or generic advice
+- Avoid repeating the same tip every conversation
+- Make tips scenario-specific to what actually happened in the conversation
+- Give practical survival advice useful for Chinese international students adapting to Australia
+- Prefer concrete examples over vague comments
+- Include hidden local expectations when relevant (e.g., politeness, waiting turns, initiating communication, asking for help).`;
 
   const conversationText = conversationHistory
     .map(msg => `${msg.role === 'user' ? 'Student' : npc.name}: ${msg.content}`)

@@ -7,16 +7,47 @@ import { useGameStore } from '../store/gameStore';
 import { Tasks } from '../data/tasks';
 import { TasksScreenNavigationProp } from '../types/navigation';
 
+// 用于在保存进度还没产生新任务时，给 MVP demo 兜底展示的额外任务
+// 结构与 data/tasks 中 Task 一致，便于 getTaskInfo 读取 rewards.description
+const ExtraTasks = {
+  say_hi_new_faces: {
+    title: 'Say Hi to New Faces',
+    description: 'Talk to 3 people around campus (0/3)',
+    rewards: { description: 'Unlock more campus conversations' },
+    difficulty: 'Easy' as const,
+    icon: '👋'
+  },
+  meet_your_tutor: {
+    title: 'Meet Your Tutor',
+    description: 'Introduce yourself to your tutor Ethan',
+    rewards: { description: 'Unlock academic support dialogue' },
+    difficulty: 'Easy' as const,
+    icon: '📚'
+  },
+  visit_student_centre: {
+    title: 'Visit Student Centre',
+    description: "Ask Mia for help at the student support desk",
+    rewards: { description: 'Unlock student support resources' },
+    difficulty: 'Easy' as const,
+    icon: '🪪'
+  }
+};
+
+const fallbackActiveTasks = ['say_hi_new_faces', 'meet_your_tutor', 'visit_student_centre'];
+
 export default function TasksScreen() {
   const navigation = useNavigation<TasksScreenNavigationProp>();
   const { activeTasks, completedTasks, loadProgress } = useGameStore();
+
+  // 如果存档里没有新任务（例如刚跳过 coffee 任务），用 fallback 任务避免任务页空白
+  const displayActiveTasks = activeTasks.length > 0 ? activeTasks : fallbackActiveTasks;
 
   useEffect(() => {
     loadProgress();
   }, []);
 
   const getTaskInfo = (taskId: string) => {
-    const task = Tasks[taskId];
+    const task = Tasks[taskId] || ExtraTasks[taskId as keyof typeof ExtraTasks];
     if (task) {
       return {
         title: task.title,
@@ -47,7 +78,7 @@ export default function TasksScreen() {
         </View>
         <View className="flex-row gap-2">
           <View className="bg-blue-100 px-3 py-1 rounded-full">
-            <Text className="text-blue-600 font-semibold text-sm">{activeTasks.length} Active</Text>
+            <Text className="text-blue-600 font-semibold text-sm">{displayActiveTasks.length} Active</Text>
           </View>
           <View className="bg-green-100 px-3 py-1 rounded-full">
             <Text className="text-green-600 font-semibold text-sm">{completedTasks.length} Done</Text>
@@ -65,14 +96,14 @@ export default function TasksScreen() {
           </View>
 
           <ScrollView className="flex-1">
-            {activeTasks.length === 0 ? (
+            {displayActiveTasks.length === 0 ? (
               <View className="bg-white rounded-lg p-6 items-center">
                 <Text className="text-4xl mb-2">✅</Text>
                 <Text className="text-gray-500">No active tasks</Text>
               </View>
             ) : (
               <View className="gap-3">
-                {activeTasks.map((taskId) => {
+                {displayActiveTasks.map((taskId) => {
                   const task = getTaskInfo(taskId);
                   return (
                     <View key={taskId} className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
