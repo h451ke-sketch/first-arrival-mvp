@@ -1,18 +1,23 @@
 // src/screens/CollegeMapScreen.tsx
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, ImageBackground, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useGameStore } from '../store/gameStore';
 import { CollegeLocations } from '../data/locations';
 import { CollegeMapScreenNavigationProp } from '../types/navigation';
 import { useStageDimensions } from '../utils/stage';
+import { playBGM } from '../services/audioService';
 
 export default function CollegeMapScreen() {
   const navigation = useNavigation<CollegeMapScreenNavigationProp>();
   const { unlockedLocations } = useGameStore();
 
   const { width: screenWidth, height: screenHeight } = useStageDimensions();
+
+  useEffect(() => {
+    playBGM('main');
+  }, []);
 
   const handleLocationPress = (locationId: string) => {
     const location = CollegeLocations[locationId];
@@ -30,11 +35,10 @@ export default function CollegeMapScreen() {
 
   return (
     <View className="flex-1">
-      {/* College Map Background */}
       <ImageBackground
         source={require('../../assets/CollegeMAP.png')}
         className="flex-1"
-        resizeMode="contain"
+        resizeMode="cover"
         style={{ width: screenWidth, height: screenHeight }}
       >
         {/* Locations positioned absolutely on the map */}
@@ -61,8 +65,8 @@ export default function CollegeMapScreen() {
               <View className="items-center">
                 <View
                   style={{
-                    width: 100,
-                    height: 100,
+                    width: 130,
+                    height: 130,
                     opacity: isUnlocked ? 1 : 0.5,
                   }}
                 >

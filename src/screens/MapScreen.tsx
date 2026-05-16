@@ -81,8 +81,8 @@ export default function MapScreen() {
                 {/* Location Building Icon */}
                 <View
                   style={{
-                    width: 100,
-                    height: 100,
+                    width: 140,
+                    height: 140,
                     opacity: isUnlocked ? 1 : 0.5,
                   }}
                 >
@@ -114,21 +114,28 @@ export default function MapScreen() {
 
       {/* Right Side Navigation Bar */}
       <View className="absolute top-0 right-0 bottom-0 w-20 bg-white/90 py-6 flex-col items-center justify-start">
+        {/* Game Logo */}
+        <Image
+          source={require('../../assets/icon.png')}
+          style={{ width: 40, height: 40, marginBottom: 10, borderRadius: 8 }}
+          resizeMode="contain"
+        />
+
         {/* 旋转 -90deg：用固定宽高 wrapper 限定布局尺寸，内层 Text 自由排版后变换 */}
         <View
           className="items-center justify-center mb-4"
-          style={{ width: 80, height: 100 }}
+          style={{ width: 80, height: 160 }}
         >
           <Text
             className="text-sm font-bold text-gray-800"
             style={{
-              width: 100,
+              width: 160,
               textAlign: 'center',
               transform: [{ rotate: '-90deg' }],
             }}
             numberOfLines={1}
           >
-            First Arrival
+            First Arrival: Australia
           </Text>
         </View>
 
