@@ -1,4 +1,4 @@
-# OS
+﻿# OS
 .DS_Store
 Thumbs.db
 
@@ -30,7 +30,7 @@ build/
 .tsbuildinfo
 
 # Local env
-.env
+
 .env.local
 .env.*.local
 
@@ -45,5 +45,5 @@ build/
 *.log
 logs/
 
-# Tailwind intermediate file（CSS 内容已落到 tailwindWebCss.ts，中间 .css 文件不入库以免重复）
+# Tailwind intermediate file锛圕SS 鍐呭宸茶惤鍒?tailwindWebCss.ts锛屼腑闂?.css 鏂囦欢涓嶅叆搴撲互鍏嶉噸澶嶏級
 src/utils/tailwind-web.css

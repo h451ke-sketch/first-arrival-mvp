@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  Alert,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -32,6 +33,7 @@ export default function DialogueScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const sessionCounted = useRef(false);
   const totalAffinityGained = useRef(0); // tracks positive affinity applied this conversation
+  const affinityCapShown = useRef(false);
   const MAX_AFFINITY_PER_CONVERSATION = 10;
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export default function DialogueScreen() {
     endConversation,
   } = useConversationStore();
 
-  const { getNPCAffinity, updateNPCAffinity, activeTasks, completeTask } = useGameStore();
+  const { getNPCAffinity, updateNPCAffinity, activeTasks, completeTask, completeTasksForNPC } = useGameStore();
   const { userDeepseekKey, sessionCount, incrementSessionCount } = useSettingsStore();
 
   const npc = NPCs[npcId];
@@ -55,17 +57,33 @@ export default function DialogueScreen() {
   const canUseSession = hasOwnKey || sessionCount < FREE_SESSION_LIMIT;
 
   // Apply affinity change capped at MAX_AFFINITY_PER_CONVERSATION total positive gain
-  const applyAffinityChange = (change: number) => {
-    let effective = change;
-    if (change > 0) {
+  const applyAffinityChange = (change: number): number => {
+    let effective = Math.max(-2, Math.min(2, change));
+
+    if (effective > 0) {
       const remaining = MAX_AFFINITY_PER_CONVERSATION - totalAffinityGained.current;
-      effective = Math.min(change, remaining);
+      effective = Math.min(effective, remaining);
       totalAffinityGained.current += effective;
+
+      if (
+        totalAffinityGained.current >= MAX_AFFINITY_PER_CONVERSATION &&
+        !affinityCapShown.current
+      ) {
+        affinityCapShown.current = true;
+
+        Alert.alert(
+          '🌟 Affinity Maxed',
+          'You’ve built a great connection today!\n\nAffinity gain reached the maximum for this conversation (+10).\nTry again next time 😊'
+        );
+      }
     }
+
     if (effective !== 0) {
       updateAffinity(effective);
       updateNPCAffinity(npcId, effective);
     }
+
+    return effective;
   };
 
   // Initialize conversation with greeting, and fade BGM when entering scene
@@ -81,6 +99,7 @@ export default function DialogueScreen() {
           context: 'greeting',
           conversationHistory: [],
           location: location.displayName.en,
+          currentAffinity,
         });
 
         addMessage({ role: 'npc', content: greeting.message });
@@ -144,16 +163,17 @@ export default function DialogueScreen() {
         userInput: transcript.text,
         conversationHistory: currentConversation?.messages || [],
         location: location.displayName.en,
+        currentAffinity,
       });
 
       // 4. Update affinity (capped at +10 per conversation)
-      applyAffinityChange(response.affinityChange);
+      const effectiveAffinityChange = applyAffinityChange(response.affinityChange);
 
       // 5. Add NPC response
       addMessage({
         role: 'npc',
         content: response.message,
-        affinityChange: response.affinityChange,
+        affinityChange: effectiveAffinityChange,
         feedback: response.feedback,
       });
 
@@ -188,6 +208,13 @@ export default function DialogueScreen() {
     setIsProcessing(true);
     setError(null);
 
+    // IMPORTANT:
+    // Complete the NPC-related task BEFORE calling DeepSeek summary.
+    // If the summary API fails or returns broken JSON, the task still completes.
+    if (hasUserMessages) {
+      completeTasksForNPC(npcId);
+    }
+
     try {
       const relevantTasks = activeTasks
         .map(taskId => Tasks[taskId])
@@ -212,15 +239,27 @@ export default function DialogueScreen() {
         areasToImprove: summaryResult.areasToImprove,
       });
 
+      // Also keep any tasks that DeepSeek explicitly identified as completed.
       summaryResult.completedTaskIds.forEach(taskId => {
-        console.log(`Task completed: ${taskId}`);
+        console.log(`AI-marked task completed: ${taskId}`);
         completeTask(taskId);
       });
 
       navigation.navigate('Summary', { conversationId: currentConversation.id });
     } catch (err: any) {
       console.error('Error generating summary:', err);
-      setError('Failed to generate summary. Please try again.');
+
+      // Even if summary fails, still close the conversation and navigate away.
+      // This prevents the user from being stuck and preserves task progression.
+      endConversation({
+        overallFeedback: '本次对话已完成。你已经完成了与该 NPC 相关的练习任务。',
+        languageTips: ['继续练习完整表达自己的需求。'],
+        culturalTips: ['在澳洲，主动向工作人员或服务人员说明自己的需求是很正常的。'],
+        strengths: ['你完成了一次真实场景对话。'],
+        areasToImprove: ['可以尝试加入 please / thanks 等礼貌表达。'],
+      });
+
+      navigation.navigate('Summary', { conversationId: currentConversation.id });
     } finally {
       setIsProcessing(false);
     }

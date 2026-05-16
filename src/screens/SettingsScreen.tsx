@@ -72,9 +72,12 @@ export default function SettingsScreen() {
     setIsSavingKey(true);
     try {
       await setDeepseekKey(keyInput);
-      Alert.alert('Saved', keyInput.trim()
-        ? 'API Key saved. Session limit removed.'
-        : 'API Key cleared.');
+      Alert.alert(
+        'Saved',
+        keyInput.trim()
+          ? 'API Key saved. Session limit removed.'
+          : 'API Key cleared.'
+      );
     } finally {
       setIsSavingKey(false);
     }

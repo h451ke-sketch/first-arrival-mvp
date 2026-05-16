@@ -1,72 +1,55 @@
-// src/screens/HelpScreen.tsx
-
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { HelpScreenNavigationProp } from '../types/navigation';
 
 export default function HelpScreen() {
-  const navigation = useNavigation<HelpScreenNavigationProp>();
+  const navigation = useNavigation();
 
   return (
     <View className="flex-1 bg-white">
-      {/* Header */}
-      <View className="bg-white px-6 py-4 shadow-sm flex-row items-center border-b border-gray-200">
+      <View className="bg-white px-5 pt-5 pb-4 border-b border-gray-200 flex-row items-center">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
           <Text className="text-blue-500 text-lg">← Back</Text>
         </TouchableOpacity>
-        <Text className="text-xl font-bold">Help</Text>
+        <Text className="text-2xl font-bold">Help & Support</Text>
       </View>
 
-      {/* Content */}
-      <ScrollView className="flex-1 p-6">
-        <View className="mb-6">
-          <Text className="text-2xl font-bold mb-4">📖 How to Use First Arrival</Text>
-          <Text className="text-gray-600 leading-6 mb-4">
-            Welcome to First Arrival! This app helps you practice English conversation for studying in Australia.
+      <ScrollView className="flex-1 px-5 pt-6">
+        <View className="mb-6 bg-blue-50 p-4 rounded-2xl">
+          <Text className="text-lg font-bold mb-2">
+            🔑 API Setup (Unlimited Conversations)
+          </Text>
+          <Text className="text-gray-600 leading-6">
+            • Free users have limited conversations{"\n\n"}
+            • To continue using unlimited conversations, please add your own DeepSeek API Key{"\n\n"}
+            Step 1: Visit the DeepSeek website and create an account{"\n"}
+            Step 2: Generate your API Key in DeepSeek{"\n"}
+            Step 3: Add a small balance to your DeepSeek account (usually very low cost){"\n"}
+            Step 4: Copy your API Key{"\n"}
+            Step 5: Go to Settings → Paste API Key → Save{"\n\n"}
+            Your API key is stored locally on your device and is not shared.
           </Text>
         </View>
 
-        <View className="mb-6">
-          <Text className="text-lg font-bold mb-2">🗺️ Map Screen</Text>
+        <View className="mb-6 bg-pink-50 p-4 rounded-2xl">
+          <Text className="text-lg font-bold mb-2">
+            🎓 About First Arrival
+          </Text>
           <Text className="text-gray-600 leading-6">
-            • Tap on locations to visit them{'\n'}
-            • Locked locations will unlock as you complete tasks{'\n'}
-            • Use the right sidebar to access Contacts, Tasks, and Settings
+            First Arrival is an educational English-speaking simulation designed to help international students adapt to studying in Australia through real-life communication practice.{"\n\n"}
+            This project was developed as part of LNGS7528: Dissertation Part 1 and LNGS7529: Dissertation Part 2 at the University of Sydney.{"\n\n"}
+            Special thanks to Professor Sunny-Boy Ahmar Mahboob for his valuable guidance and support throughout LNGS7528: Dissertation Part 1 and LNGS7529: Dissertation Part 2.
           </Text>
         </View>
 
-        <View className="mb-6">
-          <Text className="text-lg font-bold mb-2">💬 Conversations</Text>
-          <Text className="text-gray-600 leading-6">
-            • Hold the microphone button to speak{'\n'}
-            • Release to send your message{'\n'}
-            • Your English will be evaluated{'\n'}
-            • Building good relationships increases NPC affinity
+        <View className="mb-8 bg-green-50 p-4 rounded-2xl">
+          <Text className="text-lg font-bold mb-2">
+            📧 Contact Support
           </Text>
-        </View>
-
-        <View className="mb-6">
-          <Text className="text-lg font-bold mb-2">❤️ Affinity System</Text>
           <Text className="text-gray-600 leading-6">
-            • Affinity represents your relationship with NPCs{'\n'}
-            • Good conversations increase affinity{'\n'}
-            • Higher affinity unlocks more content
-          </Text>
-        </View>
-
-        <View className="mb-6">
-          <Text className="text-lg font-bold mb-2">📝 Tasks</Text>
-          <Text className="text-gray-600 leading-6">
-            • Complete tasks to unlock new locations{'\n'}
-            • Tasks help you practice different scenarios
-          </Text>
-        </View>
-
-        <View className="mb-4">
-          <Text className="text-lg font-bold mb-2">Need More Help?</Text>
-          <Text className="text-gray-600 leading-6">
-            Contact support or check our documentation online.
+            For technical support or feedback:{"\n\n"}
+            1017917643@qq.com{"\n\n"}
+            We welcome feedback to improve the learning experience.
           </Text>
         </View>
       </ScrollView>
