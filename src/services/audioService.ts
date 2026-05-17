@@ -57,7 +57,24 @@ export async function playBGM(trackName: string): Promise<void> {
   try {
     // 如果已经在播放同一首曲子，只需恢复播放
     if (bgmSound && currentBGMTrack === trackName) {
-      await bgmSound.playAsync();
+      try {
+        await bgmSound.playAsync();
+      } catch (e) {
+        // 如果被浏览器阻止，注册一次性交互事件恢复（使用捕获阶段以防 React Native Web 阻止冒泡）
+        if (Platform.OS === 'web' && typeof document !== 'undefined') {
+          const resumeOnInteraction = async () => {
+            try {
+              if (bgmSound) await bgmSound.playAsync();
+            } catch (err) {}
+            document.removeEventListener('click', resumeOnInteraction, true);
+            document.removeEventListener('touchstart', resumeOnInteraction, true);
+            document.removeEventListener('keydown', resumeOnInteraction, true);
+          };
+          document.addEventListener('click', resumeOnInteraction, { capture: true, once: true });
+          document.addEventListener('touchstart', resumeOnInteraction, { capture: true, once: true });
+          document.addEventListener('keydown', resumeOnInteraction, { capture: true, once: true });
+        }
+      }
       return;
     }
 
@@ -66,11 +83,11 @@ export async function playBGM(trackName: string): Promise<void> {
       await bgmSound.unloadAsync();
     }
 
-    // 加载并播放新音乐
+    // 加载音乐资源 (应使用 shouldPlay: false, 避免在浏览器上由于 Autoplay 阻止导致 createAsync 抛出致命异常)
     const { sound } = await Audio.Sound.createAsync(
       trackAsset,
       {
-        shouldPlay: true,
+        shouldPlay: false,
         isLooping: true,
         volume: isMuted ? 0 : bgmVolume * bgmSceneMultiplier
       }
@@ -79,7 +96,37 @@ export async function playBGM(trackName: string): Promise<void> {
     bgmSound = sound;
     currentBGMTrack = trackName;
 
-    console.log(`[AudioService] Playing BGM: ${trackName}, volume: ${bgmVolume * bgmSceneMultiplier}`);
+    // 尝试播放音频并处理 Autoplay 被浏览器拦截的情况
+    const tryPlay = async () => {
+      try {
+        await sound.playAsync();
+        console.log(`[AudioService] Playing BGM: ${trackName}, volume: ${bgmVolume * bgmSceneMultiplier}`);
+      } catch (playError) {
+        console.warn('[AudioService] BGM autoplay blocked, waiting for user interaction to play BGM.');
+        
+        // Web 端：注册一次性交互事件，点击/触摸/按键后立即恢复播放（使用捕获阶段以防 React Native Web 阻止冒泡）
+        if (Platform.OS === 'web' && typeof document !== 'undefined') {
+          const resumeOnInteraction = async () => {
+            try {
+              if (bgmSound) {
+                await bgmSound.playAsync();
+                console.log('[AudioService] BGM successfully resumed after user interaction');
+              }
+            } catch (e) {
+              console.error('[AudioService] BGM failed to play on interaction:', e);
+            }
+            document.removeEventListener('click', resumeOnInteraction, true);
+            document.removeEventListener('touchstart', resumeOnInteraction, true);
+            document.removeEventListener('keydown', resumeOnInteraction, true);
+          };
+          document.addEventListener('click', resumeOnInteraction, { capture: true, once: true });
+          document.addEventListener('touchstart', resumeOnInteraction, { capture: true, once: true });
+          document.addEventListener('keydown', resumeOnInteraction, { capture: true, once: true });
+        }
+      }
+    };
+
+    await tryPlay();
   } catch (error) {
     console.error('Failed to play BGM:', error);
   }

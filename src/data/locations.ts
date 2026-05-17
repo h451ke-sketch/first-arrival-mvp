@@ -9,7 +9,7 @@ export const MainMapLocations: Record<string, Location> = {
     displayName: { en: 'School', zh: '学校' },
     image: require('../../assets/locations/main_school.png'),
     npcId: 'jack', // 占位，点击后跳转至学校副地图
-    position: { x: 173, y: 150 },
+    position: { x: 170, y: 135 },
     unlocked: true
   },
 
@@ -19,7 +19,7 @@ export const MainMapLocations: Record<string, Location> = {
     displayName: { en: 'Supermarket', zh: '超市' },
     image: require('../../assets/locations/main_supermarket.png'),
     npcId: 'michael',
-    position: { x: 270, y: 150 },
+    position: { x: 274, y: 150 },
     unlocked: false
   },
 
@@ -29,7 +29,7 @@ export const MainMapLocations: Record<string, Location> = {
     displayName: { en: 'Apartment', zh: '公寓' },
     image: require('../../assets/locations/main_apartment.png'),
     npcId: 'cecilia',
-    position: { x: 190, y: 265 },
+    position: { x: 180, y: 265 },
     unlocked: false
   },
 
@@ -39,7 +39,7 @@ export const MainMapLocations: Record<string, Location> = {
     displayName: { en: 'Bank', zh: '银行' },
     image: require('../../assets/locations/main_bank.png'),
     npcId: 'mark',
-    position: { x: 325, y:205 },
+    position: { x: 335, y: 204 },
     unlocked: false
   }
 };
@@ -81,7 +81,7 @@ export const CollegeLocations: Record<string, Location> = {
     displayName: { en: 'Classroom', zh: '教室' },
     image: require('../../assets/locations/classroom.png'),
     npcId: 'ethan',
-    position: { x: 140, y: 190 },
+    position: { x: 140, y: 220 },
     unlocked: false
   },
 

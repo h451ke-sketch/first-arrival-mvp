@@ -27,7 +27,7 @@ export function injectGlobalWebStyles(): void {
       padding: 0;
       width: 100%;
       height: 100%;
-      background: #000;
+      background: radial-gradient(circle at center, #1e293b, #0f172a);
       overflow: hidden;
       overscroll-behavior: none;
     }

@@ -22,6 +22,7 @@ export interface NPCResponseRequest {
   context?: 'greeting' | 'conversation';
   conversationHistory: Message[];
   location: string;
+  currentAffinity?: number;
 }
 
 export interface NPCResponse {
@@ -39,6 +40,69 @@ export interface ConversationSummaryResponse {
   affinityChange: number;
   completedTaskIds: string[];
 }
+
+const getRuleBasedAffinityScore = (userInput?: string): number | null => {
+  if (!userInput) return null;
+
+  const input = userInput.toLowerCase().trim();
+
+  // Highest priority: rude / insulting / aggressive language
+  const rudePatterns = [
+    'shut up',
+    'stupid',
+    'idiot',
+    'dumb',
+    'hate you',
+    'fuck',
+    'fucking',
+    'shit',
+    'bitch',
+    'useless',
+    'go away',
+    'leave me alone',
+    'give me now',
+    'hurry up',
+    'i want it now',
+    'you are annoying'
+  ];
+
+  if (rudePatterns.some(pattern => input.includes(pattern))) {
+    return -2;
+  }
+
+  // Strong polite communication
+  const strongPolitePatterns = [
+    'please',
+    'thank you',
+    'thanks',
+    'could i',
+    'can i',
+    'may i',
+    'would you mind',
+    'i would like',
+    "i'd like",
+    'could you',
+    'excuse me',
+    'sorry'
+  ];
+
+  const hasPoliteLanguage = strongPolitePatterns.some(pattern =>
+    input.includes(pattern)
+  );
+
+  // Strong positive: polite + meaningful request/response
+  if (hasPoliteLanguage && input.length >= 12) {
+    return 2;
+  }
+
+  // Basic successful communication
+  if (input.length >= 8) {
+    return 1;
+  }
+
+  return 0;
+};
+
 
 export const generateNPCResponse = async (
   request: NPCResponseRequest
@@ -99,9 +163,19 @@ export const generateNPCResponse = async (
       return getFallbackResponse(npc, request);
     }
 
+    const aiAffinity = Math.max(
+      -2,
+      Math.min(2, Math.round(Number(parsed.affinityChange) || 0))
+    );
+
+    const ruleBasedAffinity = getRuleBasedAffinityScore(request.userInput);
+
     return {
       message: parsed.npcMessage,
-      affinityChange: parsed.affinityChange || 0,
+      affinityChange:
+        ruleBasedAffinity === null
+          ? aiAffinity
+          : ruleBasedAffinity,
       feedback: parsed.languageFeedback?.hasError ? parsed.languageFeedback : undefined
     };
 
@@ -118,7 +192,7 @@ const buildNPCPrompt = (
   npc: NPC,
   request: NPCResponseRequest
 ): { systemPrompt: string; userPrompt: string } => {
-  const { userInput, context, conversationHistory, location } = request;
+  const { userInput, context, conversationHistory, location, currentAffinity = 0 } = request;
 
   const systemPrompt = `You are ${npc.name}, a ${npc.role} at ${location}.
 
@@ -126,6 +200,43 @@ YOUR PERSONALITY:
 - Traits: ${npc.personality.traits.join(', ')}
 - Speech style: ${npc.personality.speechStyle}
 - Cultural background: ${npc.personality.culturalBackground}
+
+RELATIONSHIP LEVEL:
+Current affinity with the student: ${currentAffinity}
+
+Use the current affinity to adjust warmth while keeping ${npc.name}'s original role and personality.
+
+0-29 STRANGER:
+- Be polite, helpful, and professional
+- Keep some social distance
+- Do not act overly familiar
+- Use simple service-style or support-style language
+
+30-59 FAMILIAR:
+- Be warmer and more relaxed
+- Recognise the student as someone you have met before
+- Use friendly greetings such as "Good to see you again" when natural
+- Give more encouragement and supportive comments
+- Still stay appropriate to your role
+
+60-99 FRIEND:
+- Sound like a trusted campus contact or friendly local supporter
+- Add natural small talk and gentle humour when appropriate
+- Show more personal concern, such as asking how they have been
+- Offer reassurance and practical help more proactively
+- Keep the tone supportive, not romantic
+
+100 CLOSE FRIEND:
+- Be especially warm, caring, and emotionally supportive
+- Sound like a safe person, mentor, or trusted friend
+- You may use very familiar but appropriate phrasing such as "There you are", "I was wondering how you were going", or "Don't stress, I'm here to help"
+- Never become romantic, flirtatious, possessive, or inappropriate
+- Keep professional boundaries for roles like doctor, counsellor, tutor, bank teller, and receptionist
+
+IMPORTANT RELATIONSHIP BOUNDARY:
+- Increased affinity means warmer trust and support, NOT romance
+- Do not use intimate pet names, flirting, or overly dramatic emotional language
+- Keep all support realistic for an Australian university/student-life context
 
 IMPORTANT INSTRUCTIONS:
 1. Stay in character as ${npc.name}
@@ -142,7 +253,7 @@ IMPORTANT INSTRUCTIONS:
 Respond ONLY with a JSON object in this exact format:
 {
   "npcMessage": "Your response as ${npc.name}",
-  "affinityChange": <number between -10 and +10>,
+  "affinityChange": <integer: -2, -1, 0, 1, or 2>,
   "languageFeedback": {
     "hasError": <boolean>,
     "errorType": "grammar|vocabulary|pronunciation|politeness" or null,
@@ -153,11 +264,19 @@ Respond ONLY with a JSON object in this exact format:
 }
 
 AFFINITY SCORING:
-+5 to +10: Very polite, natural, culturally appropriate
-+1 to +4: Good effort, minor issues
-0: Neutral, basic communication
--1 to -4: Awkward, somewhat inappropriate
--5 to -10: Rude, very inappropriate, or confusing
+You MUST use the full -2 to +2 range.
+
++2: The student is clearly polite, cooperative, and communicatively successful. Give +2 when they use polite expressions such as "please", "thank you", "could I", "may I", "would you mind", explain their need clearly, respond appropriately to your question, or complete the scenario in a culturally natural way.
++1: The student communicates successfully but the wording is basic, short, or only partly polite.
+0: The student gives a very minimal or neutral reply that does not move the conversation much.
+-1: The student is awkward, unclear, slightly inappropriate, or ignores the social context.
+-2: The student is rude, demanding, confusing, or culturally inappropriate.
+
+IMPORTANT:
+- Do NOT be overly strict.
+- If the student's message is polite and understandable, give at least +1.
+- If the student's message is polite, clear, and scenario-appropriate, give +2.
+- Short but polite requests can still receive +2, for example: "Can I have a flat white, please?" 
 
 LANGUAGE FEEDBACK:
 - Only give feedback if there's a clear error
@@ -188,19 +307,47 @@ const getFallbackResponse = (
   npc: NPC,
   request: NPCResponseRequest
 ): NPCResponse => {
-  const fallbacks = {
-    greeting: [
-      "G'day! How can I help you today?",
-      "Hey there! What can I do for you?",
-      "Hi! Welcome, what brings you in?"
-    ],
-    default: [
-      "That's interesting, tell me more!",
-      "I see, anything else?",
-      "No worries, mate!",
-      "Sounds good!"
-    ]
-  };
+  const affinity = request.currentAffinity ?? 0;
+
+  const fallbacks = affinity >= 60
+    ? {
+        greeting: [
+          "Hey, good to see you again! How have you been?",
+          "There you are! What can I help you with today?",
+          "Hey! Nice to see you. How are you going?"
+        ],
+        default: [
+          "No worries, I'm happy to help. What would you like to do next?",
+          "You're doing well. What else can I help with?",
+          "All good, tell me a bit more."
+        ]
+      }
+    : affinity >= 30
+      ? {
+          greeting: [
+            "Hey, good to see you again! How can I help?",
+            "Hi again! What can I do for you today?",
+            "Nice to see you again. What brings you in?"
+          ],
+          default: [
+            "No worries, what would you like to do next?",
+            "That sounds good. Anything else I can help with?",
+            "You're doing well. What else would you like to ask?"
+          ]
+        }
+      : {
+          greeting: [
+            "G'day! How can I help you today?",
+            "Hey there! What can I do for you?",
+            "Hi! Welcome, what brings you in?"
+          ],
+          default: [
+            "That's interesting, tell me more!",
+            "I see, anything else?",
+            "No worries, mate!",
+            "Sounds good!"
+          ]
+        };
 
   const messages = request.context === 'greeting'
     ? fallbacks.greeting
@@ -355,9 +502,16 @@ IMPORTANT:
     .join('\n');
 
   const tasksText = activeTasks.length > 0
-    ? activeTasks.map(task =>
-        `Task ID: "${task.id}" | Title: "${task.title}" | Criteria: ${task.completionCriteria}`
-      ).join('\n')
+    ? activeTasks.map(task => {
+        const safeCriteria = String(task.completionCriteria || '')
+          .replace(/\\/g, '\\\\')
+          .replace(/"/g, '\\"')
+          .replace(/'/g, '')
+          .replace(/\n/g, ' ')
+          .replace(/\r/g, ' ');
+
+        return `Task ID: "${task.id}" | Title: "${task.title}" | Criteria: ${safeCriteria}`;
+      }).join('\n')
     : 'None';
 
   const userPrompt = `CONVERSATION:\n${conversationText}\n\nACTIVE TASKS:\n${tasksText}`;
