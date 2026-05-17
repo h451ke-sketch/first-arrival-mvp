@@ -40,7 +40,7 @@ export default function SettingsScreen() {
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
-  // Custom premium modal popup states
+  // Custom sub-card modal states
   const [confirmResetVisible, setConfirmResetVisible] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
@@ -123,7 +123,7 @@ export default function SettingsScreen() {
         <TouchableOpacity
           activeOpacity={1}
           onPress={handleCardPress}
-          className="bg-white rounded-3xl p-4"
+          className="bg-white rounded-3xl p-4 relative overflow-hidden"
           style={{
             width: 330,
             maxWidth: '86%',
@@ -269,89 +269,86 @@ export default function SettingsScreen() {
               <Text className="text-red-500 text-sm font-semibold">Exit</Text>
             </TouchableOpacity>
           </ScrollView>
+
+          {/* Beautiful Custom Reset Confirmation Dialog (Sub-card style) */}
+          {confirmResetVisible && (
+            <View 
+              className="absolute inset-0 bg-white/98 items-center justify-center p-6 z-50 rounded-3xl"
+              style={{ width: '100%', height: '100%' }}
+            >
+              {/* Warning Icon with a soft pink background circle */}
+              <View className="w-16 h-16 rounded-full bg-red-50 items-center justify-center mb-4 border border-red-100">
+                <Text className="text-3xl">⚠️</Text>
+              </View>
+              
+              <Text className="text-lg font-bold text-gray-800 text-center mb-2">Reset Game Progress?</Text>
+              
+              <Text className="text-xs text-gray-500 text-center mb-5 px-1 leading-relaxed">
+                This will permanently delete your task progress, NPC relationships, and conversation history. This action cannot be undone.
+              </Text>
+
+              {/* Warning details list */}
+              <View className="w-full bg-red-50/50 rounded-xl p-3 mb-5 border border-red-100/50">
+                <Text className="text-xs text-red-600 font-bold mb-1">🗑️ Clear Cache & Progress</Text>
+                <Text className="text-[10px] text-gray-600">• All 8 NPC Affinity & Chat logs</Text>
+                <Text className="text-[10px] text-gray-600">• Unlocked locations & map areas</Text>
+              </View>
+
+              {/* Action buttons */}
+              <View className="flex-row w-full gap-3">
+                <TouchableOpacity
+                  onPress={() => setConfirmResetVisible(false)}
+                  className="flex-1 bg-gray-100 py-2.5 rounded-full items-center active:bg-gray-200"
+                >
+                  <Text className="text-gray-600 font-bold text-xs">Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  onPress={doReset}
+                  disabled={isResetting}
+                  className="flex-1 bg-red-500 py-2.5 rounded-full items-center active:bg-red-600 shadow-sm shadow-red-200"
+                >
+                  {isResetting ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Text className="text-white font-bold text-xs">Reset All</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Beautiful Custom Success Dialog (Sub-card style) */}
+          {showSuccessDialog && (
+            <View 
+              className="absolute inset-0 bg-white/98 items-center justify-center p-6 z-50 rounded-3xl"
+              style={{ width: '100%', height: '100%' }}
+            >
+              {/* Success icon with soft green background circle */}
+              <View className="w-16 h-16 rounded-full bg-green-50 items-center justify-center mb-4 border border-green-100">
+                <Text className="text-3xl">🎉</Text>
+              </View>
+              
+              <Text className="text-lg font-bold text-gray-800 text-center mb-2">Reset Successful</Text>
+              
+              <Text className="text-xs text-gray-500 text-center mb-5 px-2 leading-relaxed">
+                All task progress and NPC relationships have been successfully wiped clean.
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setShowSuccessDialog(false);
+                  navigation.goBack();
+                }}
+                className="w-full bg-green-500 py-2.5 rounded-full items-center active:bg-green-600 shadow-sm shadow-green-200"
+              >
+                <Text className="text-white font-bold text-xs">Done</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
         </TouchableOpacity>
       </KeyboardAvoidingView>
-
-      {/* Beautiful Custom Reset Confirmation Dialog overlay */}
-      {confirmResetVisible && (
-        <View 
-          className="absolute inset-0 bg-black/60 items-center justify-center p-4 z-50"
-          style={{ width: '100%', height: '100%', borderRadius: 24 }}
-        >
-          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} className="bg-white rounded-3xl p-6 shadow-2xl items-center" style={{ width: 300 }}>
-            {/* Warning Icon with a soft pink background circle */}
-            <View className="w-16 h-16 rounded-full bg-red-50 items-center justify-center mb-4 border border-red-100">
-              <Text className="text-3xl">⚠️</Text>
-            </View>
-            
-            <Text className="text-lg font-bold text-gray-800 text-center mb-2">Reset Game Progress?</Text>
-            
-            <Text className="text-xs text-gray-500 text-center mb-5 px-1 leading-relaxed">
-              This will permanently delete your task progress, NPC relationships, and conversation history. This action cannot be undone.
-            </Text>
-
-            {/* Warning details list */}
-            <View className="w-full bg-red-50/50 rounded-xl p-3 mb-5 border border-red-100/50">
-              <Text className="text-xs text-red-600 font-bold mb-1">🗑️ Clear Cache & Progress</Text>
-              <Text className="text-[10px] text-gray-600">• All 8 NPC Affinity & Chat logs</Text>
-              <Text className="text-[10px] text-gray-600">• Unlocked locations & map areas</Text>
-            </View>
-
-            {/* Action buttons */}
-            <View className="flex-row w-full gap-3">
-              <TouchableOpacity
-                onPress={() => setConfirmResetVisible(false)}
-                className="flex-1 bg-gray-100 py-2.5 rounded-full items-center active:bg-gray-200"
-              >
-                <Text className="text-gray-600 font-bold text-xs">Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                onPress={doReset}
-                disabled={isResetting}
-                className="flex-1 bg-red-500 py-2.5 rounded-full items-center active:bg-red-600 shadow-sm shadow-red-200"
-              >
-                {isResetting ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text className="text-white font-bold text-xs">Reset All</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Beautiful Custom Success Dialog overlay */}
-      {showSuccessDialog && (
-        <View 
-          className="absolute inset-0 bg-black/60 items-center justify-center p-4 z-50"
-          style={{ width: '100%', height: '100%', borderRadius: 24 }}
-        >
-          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} className="bg-white rounded-3xl p-6 shadow-2xl items-center" style={{ width: 280 }}>
-            {/* Success icon with soft green background circle */}
-            <View className="w-16 h-16 rounded-full bg-green-50 items-center justify-center mb-4 border border-green-100">
-              <Text className="text-3xl">🎉</Text>
-            </View>
-            
-            <Text className="text-lg font-bold text-gray-800 text-center mb-2">Reset Successful</Text>
-            
-            <Text className="text-xs text-gray-500 text-center mb-5 px-2 leading-relaxed">
-              All task progress and NPC relationships have been successfully wiped clean.
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => {
-                setShowSuccessDialog(false);
-                navigation.goBack();
-              }}
-              className="w-full bg-green-500 py-2.5 rounded-full items-center active:bg-green-600 shadow-sm shadow-green-200"
-            >
-              <Text className="text-white font-bold text-xs">Done</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </View>
-      )}
     </TouchableOpacity>
   );
 }
