@@ -57,7 +57,7 @@ export default function SettingsScreen() {
   };
 
   const handleExit = () => {
-    BackHandler.exitApp();
+    navigation.goBack();
   };
 
   const handleBackgroundPress = () => {
@@ -72,42 +72,66 @@ export default function SettingsScreen() {
     setIsSavingKey(true);
     try {
       await setDeepseekKey(keyInput);
-      Alert.alert(
-        'Saved',
-        keyInput.trim()
-          ? 'API Key saved. Session limit removed.'
-          : 'API Key cleared.'
-      );
+      if (Platform.OS === 'web') {
+        alert(keyInput.trim() ? 'API Key saved. Session limit removed.' : 'API Key cleared.');
+      } else {
+        Alert.alert(
+          'Saved',
+          keyInput.trim()
+            ? 'API Key saved. Session limit removed.'
+            : 'API Key cleared.'
+        );
+      }
     } finally {
       setIsSavingKey(false);
     }
   };
 
   const handleResetProgress = () => {
-    Alert.alert(
-      'Reset All Progress',
-      'Are you sure you want to reset all progress? This will delete:\n\n• All task progress\n• All NPC relationships\n• All conversation history\n• Unlocked locations\n\nThis action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            setIsResetting(true);
-            try {
-              await resetProgress();
-              await clearAllConversations();
-              Alert.alert('Success', 'All progress has been reset successfully.');
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to reset progress. Please try again.');
-            } finally {
-              setIsResetting(false);
-            }
+    const title = 'Reset All Progress';
+    const message = 'Are you sure you want to reset all progress? This will delete:\n\n• All task progress\n• All NPC relationships\n• All conversation history\n• Unlocked locations\n\nThis action cannot be undone.';
+
+    const doReset = async () => {
+      setIsResetting(true);
+      try {
+        await resetProgress();
+        await clearAllConversations();
+        if (Platform.OS === 'web') {
+          alert('All progress has been reset successfully.');
+        } else {
+          Alert.alert('Success', 'All progress has been reset successfully.');
+        }
+        navigation.goBack();
+      } catch (error) {
+        if (Platform.OS === 'web') {
+          alert('Failed to reset progress. Please try again.');
+        } else {
+          Alert.alert('Error', 'Failed to reset progress. Please try again.');
+        }
+      } finally {
+        setIsResetting(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(message);
+      if (confirmed) {
+        doReset();
+      }
+    } else {
+      Alert.alert(
+        title,
+        message,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Reset',
+            style: 'destructive',
+            onPress: doReset,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const hasOwnKey = userDeepseekKey.trim().length > 0;

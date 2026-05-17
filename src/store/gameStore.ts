@@ -32,6 +32,79 @@ const InitialUnlockedLocations: LocationId[] = ['main-school', 'college-cafe'];
 
 const unique = <T,>(items: T[]): T[] => Array.from(new Set(items));
 
+// Deterministic game stage and task progress solver (Self-healing & Progressive)
+function solveGameProgress(completed: string[], npcAffinity: Record<string, NPCAffinity>): {
+  activeTasks: string[];
+  unlockedLocations: LocationId[];
+  completedTasks: string[];
+} {
+  const completedTasks = unique(completed);
+  let activeTasks: string[] = [];
+  let unlockedLocations: LocationId[] = ['main-school', 'college-cafe'];
+
+  // Stage 1: Guide to buy coffee
+  if (!completedTasks.includes('buy-coffee')) {
+    activeTasks = ['buy-coffee'];
+    return { activeTasks, unlockedLocations, completedTasks };
+  }
+
+  // Stage 2: Campus support conversations (5 tasks, 4 locations)
+  unlockedLocations = unique([
+    ...unlockedLocations,
+    'student-center',
+    'counseling-room',
+    'medical-center',
+    'college-classroom',
+  ] as LocationId[]);
+
+  // say-hi-new-faces is completed if meet-tutor, student-center-help, talk-counsellor, and book-medical-appointment are all completed
+  const campusConversationsDone = RequiredCampusConversationTaskIds.every(
+    id => completedTasks.includes(id)
+  );
+  if (campusConversationsDone && !completedTasks.includes('say-hi-new-faces')) {
+    completedTasks.push('say-hi-new-faces');
+  }
+
+  const campusStageDone = CampusStageTaskIds.every(
+    id => completedTasks.includes(id)
+  );
+
+  if (!campusStageDone) {
+    activeTasks = CampusStageTaskIds.filter(id => !completedTasks.includes(id));
+    return { activeTasks, unlockedLocations, completedTasks };
+  }
+
+  // Stage 3: Life support conversations outside school (3 tasks, 3 locations)
+  unlockedLocations = unique([
+    ...unlockedLocations,
+    'main-bank',
+    'main-supermarket',
+    'main-apartment',
+  ] as LocationId[]);
+
+  const lifeStageDone = LifeStageTaskIds.every(
+    id => completedTasks.includes(id)
+  );
+
+  if (!lifeStageDone) {
+    activeTasks = LifeStageTaskIds.filter(id => !completedTasks.includes(id));
+    return { activeTasks, unlockedLocations, completedTasks };
+  }
+
+  // Stage 4: Affinity milestones (8 tasks)
+  // Auto-complete affinity task if an NPC has reached affinity 30
+  Object.entries(AffinityTaskByNPCId).forEach(([npcId, affinityTaskId]) => {
+    const affinity = npcAffinity[npcId]?.currentAffinity ?? 0;
+    if (affinity >= 30 && !completedTasks.includes(affinityTaskId)) {
+      completedTasks.push(affinityTaskId);
+    }
+  });
+
+  activeTasks = AffinityStageTaskIds.filter(id => !completedTasks.includes(id));
+
+  return { activeTasks, unlockedLocations, completedTasks };
+}
+
 export const useGameStore = create<GameState>((set, get) => ({
   // Initial state
   unlockedLocations: InitialUnlockedLocations,
@@ -51,7 +124,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     const task = Tasks[taskId];
 
     // Hard guard: affinity tasks can ONLY be completed when that NPC has affinity >= 30.
-    // This prevents AI summary or NPC conversation auto-completion from marking them done too early.
     if (AffinityStageTaskIds.includes(taskId)) {
       const targetNpcId = Object.entries(AffinityTaskByNPCId).find(
         ([, affinityTaskId]) => affinityTaskId === taskId
@@ -74,101 +146,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         return state;
       }
 
-      let completedTasks = unique([...state.completedTasks, taskId]);
-      let activeTasks = state.activeTasks.filter(id => id !== taskId);
-      let unlockedLocations = [...state.unlockedLocations];
-
-      // 1) After the coffee task, show the five campus tasks.
-      if (taskId === 'buy-coffee') {
-        activeTasks = unique([...activeTasks, ...CampusStageTaskIds]);
-
-        unlockedLocations = unique([
-          ...unlockedLocations,
-          'student-center',
-          'counseling-room',
-          'medical-center',
-          'college-classroom',
-        ] as LocationId[]);
-      }
-
-      // 2) Say Hi to New Faces is an umbrella task:
-      // it is completed when Ethan, Mia, Mindy, and Lily have all been visited.
-      const campusConversationsDone = RequiredCampusConversationTaskIds.every(
-        id => completedTasks.includes(id)
-      );
-
-      if (campusConversationsDone && !completedTasks.includes('say-hi-new-faces')) {
-        completedTasks = unique([...completedTasks, 'say-hi-new-faces']);
-        activeTasks = activeTasks.filter(id => id !== 'say-hi-new-faces');
-      }
-
-      // 3) After all campus-stage tasks are complete, unlock the life-stage tasks.
-      const campusStageDone = CampusStageTaskIds.every(
-        id => completedTasks.includes(id)
-      );
-
-      if (campusStageDone) {
-        activeTasks = unique([...activeTasks, ...LifeStageTaskIds]);
-
-        unlockedLocations = unique([
-          ...unlockedLocations,
-          'main-bank',
-          'main-supermarket',
-          'main-apartment',
-        ] as LocationId[]);
-      }
-
-      // 4) ONLY after ALL THREE life-stage tasks are completed,
-      // unlock the eight affinity tasks.
-      const lifeStageDone = LifeStageTaskIds.every(
-        id => completedTasks.includes(id)
-      );
-
-      const affinityAlreadyVisible = AffinityStageTaskIds.some(id =>
-        activeTasks.includes(id) || completedTasks.includes(id)
-      );
-
-      if (lifeStageDone && !affinityAlreadyVisible) {
-        console.log('[GameStore] Unlocking affinity stage tasks');
-
-        activeTasks = unique([
-          ...activeTasks,
-          ...AffinityStageTaskIds
-        ]);
-
-        // If someone already has 30+ affinity,
-        // instantly complete that task.
-        Object.entries(AffinityTaskByNPCId).forEach(([npcId, affinityTaskId]) => {
-          const affinity = state.npcAffinity[npcId]?.currentAffinity ?? 0;
-
-          if (
-            affinity >= 30 &&
-            !completedTasks.includes(affinityTaskId)
-          ) {
-            completedTasks = unique([
-              ...completedTasks,
-              affinityTaskId
-            ]);
-
-            activeTasks = activeTasks.filter(
-              id => id !== affinityTaskId
-            );
-          }
-        });
-      }
-
-      // 5) Standard rewards from task definitions.
-      if (task?.rewards?.unlockLocationIds) {
-        unlockedLocations = unique([
-          ...unlockedLocations,
-          ...(task.rewards.unlockLocationIds as LocationId[]),
-        ]);
-      }
+      const rawCompleted = [...state.completedTasks, taskId];
+      const solved = solveGameProgress(rawCompleted, state.npcAffinity);
 
       return {
-        completedTasks,
-        activeTasks,
-        unlockedLocations,
+        completedTasks: solved.completedTasks,
+        activeTasks: solved.activeTasks,
+        unlockedLocations: solved.unlockedLocations,
       };
     });
 
@@ -186,7 +170,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       const task = Tasks[taskId];
 
       // Do not auto-complete affinity tasks just because the learner talked to the NPC.
-      // Affinity tasks are completed only by updateNPCAffinity when currentAffinity >= 30.
       if (AffinityStageTaskIds.includes(taskId)) {
         return false;
       }
@@ -219,32 +202,27 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       newAffinity = Math.max(0, Math.min(100, current.currentAffinity + change));
 
-      return {
-        npcAffinity: {
-          ...state.npcAffinity,
-          [npcId]: {
-            ...current,
-            currentAffinity: newAffinity,
-            conversationCount: current.conversationCount + 1,
-            lastInteraction: new Date(),
-            relationshipLevel: getRelationshipLevel(newAffinity)
-          }
+      const updatedNPCAffinity = {
+        ...state.npcAffinity,
+        [npcId]: {
+          ...current,
+          currentAffinity: newAffinity,
+          conversationCount: current.conversationCount + 1,
+          lastInteraction: new Date(),
+          relationshipLevel: getRelationshipLevel(newAffinity)
         }
       };
+
+      // Re-run solver to auto-complete affinity task if it's unlocked and reached 30
+      const solved = solveGameProgress(state.completedTasks, updatedNPCAffinity);
+
+      return {
+        npcAffinity: updatedNPCAffinity,
+        completedTasks: solved.completedTasks,
+        activeTasks: solved.activeTasks,
+        unlockedLocations: solved.unlockedLocations,
+      };
     });
-
-    const affinityTaskId = AffinityTaskByNPCId[npcId];
-    const state = get();
-
-    if (
-      affinityTaskId &&
-      newAffinity >= 30 &&
-      state.activeTasks.includes(affinityTaskId) &&
-      !state.completedTasks.includes(affinityTaskId)
-    ) {
-      get().completeTask(affinityTaskId);
-      return;
-    }
 
     get().saveProgress();
   },
@@ -260,73 +238,26 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (saved) {
         const progress = JSON.parse(saved);
 
-        progress.unlockedLocations = unique([
-          ...InitialUnlockedLocations,
-          ...(progress.unlockedLocations || []),
-        ]);
+        const rawCompleted = progress.completedTasks || [];
+        const rawAffinity = progress.npcAffinity || {};
 
-        progress.completedTasks = unique(progress.completedTasks || []);
-        progress.activeTasks = unique(progress.activeTasks || InitialActiveTasks);
-        progress.npcAffinity = progress.npcAffinity || {};
+        // Run the solver to clean up and ensure self-healing task progression
+        const solved = solveGameProgress(rawCompleted, rawAffinity);
 
-        // Clean old saved progress:
-        // Remove any affinity task that was completed by mistake when the NPC affinity is still below 30.
-        progress.completedTasks = progress.completedTasks.filter((taskId: string) => {
-          if (!AffinityStageTaskIds.includes(taskId)) {
-            return true;
-          }
-
-          const npcId = Object.entries(AffinityTaskByNPCId).find(
-            ([, affinityTaskId]) => affinityTaskId === taskId
-          )?.[0];
-
-          const currentAffinity = npcId
-            ? progress.npcAffinity[npcId]?.currentAffinity ?? 0
-            : 0;
-
-          return currentAffinity >= 30;
+        set({
+          completedTasks: solved.completedTasks,
+          activeTasks: solved.activeTasks,
+          unlockedLocations: solved.unlockedLocations,
+          npcAffinity: rawAffinity,
         });
 
-        const lifeStageDoneOnLoad = LifeStageTaskIds.every(id =>
-          progress.completedTasks.includes(id)
-        );
-
-        // Do not show affinity tasks before all three life-stage tasks are complete.
-        // Do not keep completed tasks inside activeTasks.
-        progress.activeTasks = progress.activeTasks.filter((taskId: string) => {
-          const isCompleted = progress.completedTasks.includes(taskId);
-          const isAffinityTask = AffinityStageTaskIds.includes(taskId);
-          return !isCompleted && (lifeStageDoneOnLoad || !isAffinityTask);
-        });
-
-        // If all three life-stage tasks are complete, show unfinished affinity tasks.
-        if (lifeStageDoneOnLoad) {
-          const unfinishedAffinityTasks = AffinityStageTaskIds.filter((taskId: string) => {
-            if (progress.completedTasks.includes(taskId)) {
-              return false;
-            }
-
-            const npcId = Object.entries(AffinityTaskByNPCId).find(
-              ([, affinityTaskId]) => affinityTaskId === taskId
-            )?.[0];
-
-            const currentAffinity = npcId
-              ? progress.npcAffinity[npcId]?.currentAffinity ?? 0
-              : 0;
-
-            return currentAffinity < 30;
-          });
-
-          progress.activeTasks = unique([
-            ...progress.activeTasks,
-            ...unfinishedAffinityTasks,
-          ]);
-        }
-
-        set(progress);
-
-        // Save the cleaned progress so wrongly completed affinity tasks do not come back.
-        await AsyncStorage.setItem('@game_progress', JSON.stringify(progress));
+        // Save healed progress back
+        await AsyncStorage.setItem('@game_progress', JSON.stringify({
+          completedTasks: solved.completedTasks,
+          activeTasks: solved.activeTasks,
+          unlockedLocations: solved.unlockedLocations,
+          npcAffinity: rawAffinity,
+        }));
       }
     } catch (error) {
       console.error('Failed to load progress:', error);
@@ -350,10 +281,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   resetProgress: async () => {
     try {
+      const solved = solveGameProgress([], {});
+
       set({
-        unlockedLocations: InitialUnlockedLocations,
-        completedTasks: [],
-        activeTasks: InitialActiveTasks,
+        unlockedLocations: solved.unlockedLocations,
+        completedTasks: solved.completedTasks,
+        activeTasks: solved.activeTasks,
         npcAffinity: {}
       });
 

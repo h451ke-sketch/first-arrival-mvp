@@ -25,19 +25,6 @@ export default function TasksScreen() {
     completedTasks.includes(taskId)
   ).length;
 
-  const lifeStageDone = LifeStageTaskIds.every(taskId =>
-    completedTasks.includes(taskId)
-  );
-
-  // Hide affinity tasks until all three life-stage tasks are completed.
-  // This also cleans up old saved progress where affinity tasks were unlocked too early.
-  const filteredActiveTasks = activeTasks.filter(taskId =>
-    lifeStageDone || !AffinityStageTaskIds.includes(taskId)
-  );
-
-  const displayActiveTasks =
-    filteredActiveTasks.length > 0 ? filteredActiveTasks : fallbackActiveTasks;
-
   useEffect(() => {
     loadProgress();
   }, []);
@@ -79,12 +66,10 @@ export default function TasksScreen() {
         </View>
         <View className="flex-row gap-2">
           <View className="bg-blue-100 px-3 py-1 rounded-full">
-            <Text className="text-blue-600 font-semibold text-sm">{displayActiveTasks.length} Active</Text>
+            <Text className="text-blue-600 font-semibold text-sm">{activeTasks.length} Active</Text>
           </View>
           <View className="bg-green-100 px-3 py-1 rounded-full">
-            <Text className="text-green-600 font-semibold text-sm">{
-              completedTasks.filter(taskId => lifeStageDone || !AffinityStageTaskIds.includes(taskId)).length
-            } Done</Text>
+            <Text className="text-green-600 font-semibold text-sm">{completedTasks.length} Done</Text>
           </View>
         </View>
       </View>
@@ -99,14 +84,14 @@ export default function TasksScreen() {
           </View>
 
           <ScrollView className="flex-1">
-            {displayActiveTasks.length === 0 ? (
+            {activeTasks.length === 0 ? (
               <View className="bg-white rounded-lg p-6 items-center">
                 <Text className="text-4xl mb-2">✅</Text>
                 <Text className="text-gray-500">No active tasks</Text>
               </View>
             ) : (
               <View className="gap-3">
-                {displayActiveTasks.map((taskId) => {
+                {activeTasks.map((taskId) => {
                   const task = getTaskInfo(taskId);
                   return (
                     <View key={taskId} className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
@@ -127,7 +112,7 @@ export default function TasksScreen() {
                           <Text className="text-sm text-gray-500">Reward:</Text>
                           <Text className="text-sm font-semibold text-green-600">{task.reward}</Text>
                         </View>
-                        <TouchableOpacity className="bg-blue-500 px-4 py-2 rounded-full">
+                        <TouchableOpacity className="bg-blue-500 px-4 py-2 rounded-full" onPress={() => navigation.goBack()}>
                           <Text className="text-white text-xs font-bold">Go</Text>
                         </TouchableOpacity>
                       </View>
@@ -147,16 +132,14 @@ export default function TasksScreen() {
           </View>
 
           <ScrollView className="flex-1">
-            {completedTasks.filter(taskId => lifeStageDone || !AffinityStageTaskIds.includes(taskId)).length === 0 ? (
+            {completedTasks.length === 0 ? (
               <View className="bg-white rounded-lg p-6 items-center">
                 <Text className="text-4xl mb-2">🎯</Text>
                 <Text className="text-gray-500">No completed tasks yet</Text>
               </View>
             ) : (
               <View className="gap-3">
-                {completedTasks
-                  .filter(taskId => lifeStageDone || !AffinityStageTaskIds.includes(taskId))
-                  .map((taskId) => {
+                {completedTasks.map((taskId) => {
                   const task = getTaskInfo(taskId);
                   return (
                     <View key={taskId} className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-green-500 opacity-75">
