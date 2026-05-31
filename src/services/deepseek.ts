@@ -41,68 +41,173 @@ export interface ConversationSummaryResponse {
   completedTaskIds: string[];
 }
 
-const getRuleBasedAffinityScore = (userInput?: string): number | null => {
-  if (!userInput) return null;
+interface SFLAffinityEvaluation {
+  affinityChange: number;
+  reasoning: string;
+}
 
-  const input = userInput.toLowerCase().trim();
-
-  // Highest priority: rude / insulting / aggressive language
-  const rudePatterns = [
-    'shut up',
-    'stupid',
-    'idiot',
-    'dumb',
-    'hate you',
-    'fuck',
-    'fucking',
-    'shit',
-    'bitch',
-    'useless',
-    'go away',
-    'leave me alone',
-    'give me now',
-    'hurry up',
-    'i want it now',
-    'you are annoying'
-  ];
-
-  if (rudePatterns.some(pattern => input.includes(pattern))) {
-    return -2;
-  }
-
-  // Strong polite communication
-  const strongPolitePatterns = [
-    'please',
-    'thank you',
-    'thanks',
-    'could i',
-    'can i',
-    'may i',
-    'would you mind',
-    'i would like',
-    "i'd like",
-    'could you',
-    'excuse me',
-    'sorry'
-  ];
-
-  const hasPoliteLanguage = strongPolitePatterns.some(pattern =>
-    input.includes(pattern)
-  );
-
-  // Strong positive: polite + meaningful request/response
-  if (hasPoliteLanguage && input.length >= 12) {
-    return 2;
-  }
-
-  // Basic successful communication
-  if (input.length >= 8) {
-    return 1;
-  }
-
-  return 0;
+const clampAffinity = (value: any): number => {
+  return Math.max(-2, Math.min(2, Math.round(Number(value) || 0)));
 };
 
+const cleanJsonText = (text: string): string => {
+  return text
+    .trim()
+    .replace(/```json\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim();
+};
+
+const extractJsonObject = (text: string): string | null => {
+  const cleaned = cleanJsonText(text);
+
+  if (cleaned.startsWith('{') && cleaned.endsWith('}')) {
+    return cleaned;
+  }
+
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+
+  if (start >= 0 && end > start) {
+    return cleaned.slice(start, end + 1);
+  }
+
+  return null;
+};
+
+const evaluateSFLAffinity = async (
+  npc: NPC,
+  request: NPCResponseRequest
+): Promise<SFLAffinityEvaluation> => {
+  if (!request.userInput || request.context === 'greeting') {
+    return {
+      affinityChange: 0,
+      reasoning: 'Greeting or no student utterance; no affinity change.'
+    };
+  }
+
+  const conversationText = request.conversationHistory
+    .slice(-6)
+    .map(msg => `${msg.role === 'user' ? 'Student' : npc.name}: ${msg.content}`)
+    .join('\n');
+
+  const systemPrompt = `You are a strict SFL and Appraisal Theory evaluator for an English learning simulation.
+
+Your only job is to evaluate the student's latest utterance for relationship/affinity scoring.
+
+You MUST NOT judge isolated keywords. Judge the whole utterance in its discourse context.
+
+Use Systemic Functional Linguistics:
+- Interpersonal meaning
+- Speech function and mood
+- Modality and mitigation
+- Appropriateness to role and setting
+
+Use Appraisal Theory:
+- Affect: feelings, worry, stress, gratitude
+- Judgement: evaluation of people or behaviour
+- Appreciation: evaluation of things, systems, tasks, or situations
+- Engagement: openness, cooperation, dialogic space
+- Graduation: intensity, force, exaggeration
+
+Return ONLY valid JSON:
+{
+  "affinityChange": -2 | -1 | 0 | 1 | 2,
+  "reasoning": "one short sentence"
+}
+
+SCORING:
++2 = strong interpersonal success: clear, cooperative, socially appropriate, polite/softened, or appropriate emotional disclosure/help-seeking.
++1 = successful communication but basic, slightly direct, or only moderately polite.
+0 = minimal, unclear, neutral, or not enough interactional work.
+-1 = awkward, overly direct, dismissive, commanding, or slightly inappropriate in context.
+-2 = clearly rude, hostile, insulting, aggressive, or culturally inappropriate toward the NPC.
+
+CRITICAL RULES:
+- Negative words are not automatically rude.
+- If the student reports someone else's words, do not treat those words as an insult toward the NPC.
+- If negative judgement is directed at the NPC, score negatively.
+- If criticism is directed at a system/situation, judge whether it is dismissive or appropriately expressed.
+- "Please" or "thank you" does not automatically make an utterance polite if the speech function is demanding.
+- In counselling/tutor contexts, appropriate disclosure of stress/confusion can be +2.
+- Do not over-reward very short utterances.
+- Use the full range when appropriate.
+
+ANCHOR EXAMPLES:
+Student: "Can I have a flat white, please?" => +2
+Student: "I want a flat white." => +1
+Student: "Coffee." => 0
+Student: "Please hurry up." => -1
+Student: "You are useless." => -2
+Student: "My friend called me an idiot yesterday." => 0 or +1, because it is reported speech, not an insult toward the NPC.
+Student: "I feel stressed because I cannot understand the assignment." => +2 in counselling/tutor contexts.
+Student: "That makes no sense." => -1 if said to reject the NPC explanation; 0 if clearly referring to a confusing system.
+Student: "Sorry, I don't quite understand. Could you explain it again?" => +2.`;
+
+  const userPrompt = `NPC: ${npc.name}
+NPC role: ${npc.role}
+Location: ${request.location}
+
+RECENT CONVERSATION:
+${conversationText || 'None'}
+
+LATEST STUDENT UTTERANCE:
+"${request.userInput}"
+
+Evaluate ONLY the latest student utterance using SFL interpersonal meaning and Appraisal Theory.`;
+
+  try {
+    const response = await axios.post(
+      DEEPSEEK_URL,
+      {
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 350,
+        response_format: { type: 'json_object' }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${getDeepseekApiKey()}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      }
+    );
+
+    const text = response.data?.choices?.[0]?.message?.content;
+    if (!text) {
+      return {
+        affinityChange: 0,
+        reasoning: 'SFL evaluator returned no content.'
+      };
+    }
+
+    const jsonText = extractJsonObject(text);
+    if (!jsonText) {
+      return {
+        affinityChange: 0,
+        reasoning: 'SFL evaluator returned non-JSON content.'
+      };
+    }
+
+    const parsed = JSON.parse(jsonText);
+
+    return {
+      affinityChange: clampAffinity(parsed.affinityChange),
+      reasoning: String(parsed.reasoning || 'SFL/Appraisal evaluation completed.')
+    };
+  } catch (error: any) {
+    console.error('SFL affinity evaluation error:', error.message || error);
+    return {
+      affinityChange: 0,
+      reasoning: 'SFL evaluator failed; using neutral affinity.'
+    };
+  }
+};
 
 export const generateNPCResponse = async (
   request: NPCResponseRequest
@@ -113,7 +218,8 @@ export const generateNPCResponse = async (
     throw new Error(`NPC ${request.npcId} not found`);
   }
 
-  const { systemPrompt, userPrompt } = buildNPCPrompt(npc, request);
+  const sflEvaluation = await evaluateSFLAffinity(npc, request);
+  const { systemPrompt, userPrompt } = buildNPCPrompt(npc, request, sflEvaluation);
 
   try {
     const response = await axios.post(
@@ -148,34 +254,23 @@ export const generateNPCResponse = async (
     console.log(text);
     console.log('=== End of DeepSeek Response ===');
 
-    let cleanText = text.trim();
-    cleanText = cleanText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const jsonText = extractJsonObject(text);
 
-    if (!cleanText.startsWith('{') || !cleanText.endsWith('}')) {
-      console.warn('Incomplete JSON response:', cleanText);
+    if (!jsonText) {
+      console.warn('Incomplete JSON response:', text);
       return getFallbackResponse(npc, request);
     }
 
-    const parsed = JSON.parse(cleanText);
+    const parsed = JSON.parse(jsonText);
 
     if (!parsed.npcMessage) {
       console.warn('Missing npcMessage in response');
       return getFallbackResponse(npc, request);
     }
 
-    const aiAffinity = Math.max(
-      -2,
-      Math.min(2, Math.round(Number(parsed.affinityChange) || 0))
-    );
-
-    const ruleBasedAffinity = getRuleBasedAffinityScore(request.userInput);
-
     return {
       message: parsed.npcMessage,
-      affinityChange:
-        ruleBasedAffinity === null
-          ? aiAffinity
-          : ruleBasedAffinity,
+      affinityChange: sflEvaluation.affinityChange,
       feedback: parsed.languageFeedback?.hasError ? parsed.languageFeedback : undefined
     };
 
@@ -190,7 +285,8 @@ export const generateNPCResponse = async (
 
 const buildNPCPrompt = (
   npc: NPC,
-  request: NPCResponseRequest
+  request: NPCResponseRequest,
+  sflEvaluation?: SFLAffinityEvaluation
 ): { systemPrompt: string; userPrompt: string } => {
   const { userInput, context, conversationHistory, location, currentAffinity = 0 } = request;
 
@@ -250,10 +346,19 @@ IMPORTANT INSTRUCTIONS:
 9. If the student clearly ends the conversation, reply politely and DO NOT ask another question
 10. Avoid ending the conversation too early
 
+SFL/APPRAISAL AFFINITY RESULT:
+The student's latest utterance has already been evaluated by a separate SFL/Appraisal evaluator.
+- Affinity score to use: ${sflEvaluation?.affinityChange ?? 0}
+- Evaluation reason: ${sflEvaluation?.reasoning ?? 'No student utterance yet.'}
+
+You should make your NPC response socially consistent with this evaluation.
+For example, if the evaluation is negative because the student sounded demanding, respond professionally and gently redirect them.
+If the evaluation is positive, respond warmly and encouragingly.
+
 Respond ONLY with a JSON object in this exact format:
 {
   "npcMessage": "Your response as ${npc.name}",
-  "affinityChange": <integer: -2, -1, 0, 1, or 2>,
+  "affinityChange": ${sflEvaluation?.affinityChange ?? 0},
   "languageFeedback": {
     "hasError": <boolean>,
     "errorType": "grammar|vocabulary|pronunciation|politeness" or null,
@@ -264,19 +369,8 @@ Respond ONLY with a JSON object in this exact format:
 }
 
 AFFINITY SCORING:
-You MUST use the full -2 to +2 range.
-
-+2: The student is clearly polite, cooperative, and communicatively successful. Give +2 when they use polite expressions such as "please", "thank you", "could I", "may I", "would you mind", explain their need clearly, respond appropriately to your question, or complete the scenario in a culturally natural way.
-+1: The student communicates successfully but the wording is basic, short, or only partly polite.
-0: The student gives a very minimal or neutral reply that does not move the conversation much.
--1: The student is awkward, unclear, slightly inappropriate, or ignores the social context.
--2: The student is rude, demanding, confusing, or culturally inappropriate.
-
-IMPORTANT:
-- Do NOT be overly strict.
-- If the student's message is polite and understandable, give at least +1.
-- If the student's message is polite, clear, and scenario-appropriate, give +2.
-- Short but polite requests can still receive +2, for example: "Can I have a flat white, please?" 
+Do NOT independently rescore affinity in this response step.
+Use the provided SFL/APPRAISAL AFFINITY RESULT exactly as the affinityChange value.
 
 LANGUAGE FEEDBACK:
 - Only give feedback if there's a clear error
@@ -317,8 +411,8 @@ const getFallbackResponse = (
           "Hey! Nice to see you. How are you going?"
         ],
         default: [
-          "No worries, I'm happy to help. What would you like to do next?",
-          "You're doing well. What else can I help with?",
+          "No worries, I’m happy to help. What would you like to do next?",
+          "You’re doing well. What else can I help with?",
           "All good, tell me a bit more."
         ]
       }
@@ -332,7 +426,7 @@ const getFallbackResponse = (
           default: [
             "No worries, what would you like to do next?",
             "That sounds good. Anything else I can help with?",
-            "You're doing well. What else would you like to ask?"
+            "You’re doing well. What else would you like to ask?"
           ]
         }
       : {
@@ -407,15 +501,14 @@ export const generateConversationSummary = async (
     console.log(text);
     console.log('=== End of Summary Response ===');
 
-    let cleanText = text.trim();
-    cleanText = cleanText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const jsonText = extractJsonObject(text);
 
-    if (!cleanText.startsWith('{') || !cleanText.endsWith('}')) {
+    if (!jsonText) {
       console.warn('Incomplete JSON in summary response');
       return getFallbackSummary();
     }
 
-    const parsed = JSON.parse(cleanText);
+    const parsed = JSON.parse(jsonText);
 
     console.log('=== Parsed Summary Result ===');
     console.log('Completed Task IDs:', parsed.completedTaskIds);
@@ -428,7 +521,7 @@ export const generateConversationSummary = async (
       culturalTips: parsed.culturalTips || [],
       strengths: parsed.strengths || [],
       areasToImprove: parsed.areasToImprove || [],
-      affinityChange: parsed.affinityChange || 5,
+      affinityChange: clampAffinity(parsed.affinityChange),
       completedTaskIds: parsed.completedTaskIds || []
     };
 
@@ -455,16 +548,17 @@ Please analyze the conversation and return ONLY a JSON object in this exact form
   "culturalTips": ["Cultural tip 1 in Chinese", "Cultural tip 2 in Chinese"],
   "strengths": ["Strength 1", "Strength 2"],
   "areasToImprove": ["Area 1", "Area 2"],
-  "affinityChange": <number between -10 and +15>,
+  "affinityChange": <integer only: -2, -1, 0, 1, or 2>,
   "completedTaskIds": ["task-id-1"]
 }
 
 AFFINITY SCORING:
-+10 to +15: Excellent interaction, very polite and natural
-+5 to +9: Good conversation, friendly and appropriate
-0 to +4: Basic communication, some awkwardness
--5 to -1: Poor communication or inappropriate behavior
--10 to -6: Very rude or confusing interaction
+Use the same SFL and Appraisal logic as above.
++2: Excellent overall interpersonal success
++1: Good overall communication
+0: Neutral/basic communication
+-1: Awkward or slightly inappropriate
+-2: Rude, hostile, or confusing
 
 TASK COMPLETION: Only mark a task as completed if the student clearly fulfilled ALL the requirements. Be strict but fair.
 
@@ -526,7 +620,7 @@ const getFallbackSummary = (): ConversationSummaryResponse => {
     culturalTips: ['澳大利亚人喜欢随意的问候，比如"G\'day"', '保持友好和轻松的态度'],
     strengths: ['沟通清晰', '态度友好'],
     areasToImprove: ['可以使用更多样的词汇', '尝试更自然的表达'],
-    affinityChange: 5,
+    affinityChange: 0,
     completedTaskIds: []
   };
 };
